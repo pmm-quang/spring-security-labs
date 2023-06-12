@@ -2,7 +2,7 @@
 - Trong bài này chúng ta sẽ thực hiện code đăng ký tài khoản và gửi mã xác nhận qua email đăng ký; đăng nhập
 <h3>Cài đặt</h3>
 _pom.xml_
-````xml
+```xml
  <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -35,9 +35,9 @@ _pom.xml_
             <artifactId>lombok</artifactId>
         </dependency>
     </dependencies>
-````
+```
 _application.yml_
-````yaml
+```yaml
 server:
   port: 8082
 spring:
@@ -61,9 +61,9 @@ spring:
     hibernate:
       ddl-auto: validate
     show-sql: true
-````
+```
 - Tạo entity **User** tham chiếu với database:
-````java
+```java
 @Entity
 @Table(name = "user")
 @Getter
@@ -90,7 +90,7 @@ public class User {
     }
     public User() {}
 }
-````
+```
 - Tạo entity **ActivationKey** tham chiếu với database
 ```java
 @Entity
@@ -126,6 +126,8 @@ public class ActivationKey {
 ```java
 @Service
 public class UserService {
+    private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    private static final int KEY_LENGTH = 10;
     private final Logger log = LoggerFactory.getLogger(UserService.class);
     private final UserRepository userRepo;
     private final ActivationKeyRepository activationKeyRepo;
@@ -134,13 +136,14 @@ public class UserService {
         this.userRepo = userRepo;
         this.activationKeyRepo = activationKeyRepo;
     }
+
     public Map<String, String> createUser(RegisterRequest request) {
         if (!usernameExists(request.getUsername())
                 && !emailExists(request.getEmail())
                 && isValidEmail(request.getEmail())) {
             User user = new User(request.getUsername(), request.getPassword(), request.getEmail(), request.getName());
             User newUser = userRepo.save(user);
-            ActivationKey activationKey = new ActivationKey(newUser, newUser.getUsername());
+            ActivationKey activationKey = new ActivationKey(newUser, generateActivationKey());
             ActivationKey newActivationKey = activationKeyRepo.save(activationKey);
             Map<String, String> map = new HashMap<>();
             map.put("mail", user.getEmail());
@@ -151,8 +154,9 @@ public class UserService {
         log.error("error");
         return null;
     }
+
     public String activateUser(String activationKey) {
-        ActivationKey key = activationKeyRepo.findByActiveKey(activationKey);
+        ActivationKey key = activationKeyRepo.findByActiveKey(activationKey).orElse(null);
         if (key != null && !key.isExpired()) {
             User user = key.getUser();
             user.setActive(true);
@@ -164,6 +168,7 @@ public class UserService {
         log.error("The account's activation code has expired: " + key.getUser().getUsername());
         return "The activation code has expired!";
     }
+
     // Kiểm tra xem username đã tồn tại hay chưa
     public boolean usernameExists(String username) {
         userRepo.findByUsername(username).ifPresent(
@@ -174,6 +179,7 @@ public class UserService {
         );
         return false;
     }
+
     // Kiểm tra xem email đã tồn tại hay chưa
     public boolean emailExists(String email) {
         userRepo.findByEmail(email).ifPresent(
@@ -184,6 +190,7 @@ public class UserService {
         );
         return false;
     }
+
     //Kiểm tra định dạng email
     public boolean isValidEmail(String email) {
         String regex = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
@@ -196,6 +203,21 @@ public class UserService {
         return true;
     }
 
+    //tạo activation key ngẫu nhiên
+    private String generateActivationKey() {
+        SecureRandom random = new SecureRandom();
+        StringBuilder sb = new StringBuilder(KEY_LENGTH);
+        boolean isKeyUnique = false;
+        do {
+            sb.setLength(0);
+            for (int i = 0; i < KEY_LENGTH; i++) {
+                int randomIndex = random.nextInt(CHARACTERS.length());
+                sb.append(CHARACTERS.charAt(randomIndex));
+            }
+            isKeyUnique = !activationKeyRepo.findByActiveKey(sb.toString()).isPresent();
+        } while (!isKeyUnique);
+        return sb.toString();
+    }
 }
 ```
 - Tạo MailService để xử lý logic liên quan đến gửi mail
@@ -246,13 +268,12 @@ public class MailService {
 - Ngoài các class đã tạo như bài 8, chúng ta sẽ tạo thêm 2 class nữa để cấu hình jwt là JwtFilter và JwtTokenProvider.
 
 **JwtTokenProvider**:
-````java
+```java
 @Component
 public class JwtTokenProvider {
     private final String SECRET_KEY = "secret";
     private final long JWT_EXPIRATION = 604800000L;
-
-````
+```
 - SECRET\_KEY đại diện cho khóa bí mật được sử dụng để ký JWT và JWT\_EXPIRATION đại diện cho thời gian hết hạn của JWT tính bằng mili giây.
 ```java
 //Tạo ra jwt từ thông tin user
@@ -393,6 +414,8 @@ public class RegisterRequest {
     private String email;
 }
 ```
+![img.png](img.png)
+![img_1.png](img_1.png)
 
 ##### - Đăng nhập:
 - API dùng để đăng nhập:

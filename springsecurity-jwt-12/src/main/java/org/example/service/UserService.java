@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -19,6 +20,8 @@ import java.util.regex.Pattern;
 
 @Service
 public class UserService {
+    private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    private static final int KEY_LENGTH = 10;
     private final Logger log = LoggerFactory.getLogger(UserService.class);
     private final UserRepository userRepo;
     private final ActivationKeyRepository activationKeyRepo;
@@ -34,7 +37,7 @@ public class UserService {
                 && isValidEmail(request.getEmail())) {
             User user = new User(request.getUsername(), request.getPassword(), request.getEmail(), request.getName());
             User newUser = userRepo.save(user);
-            ActivationKey activationKey = new ActivationKey(newUser, newUser.getUsername());
+            ActivationKey activationKey = new ActivationKey(newUser, generateActivationKey());
             ActivationKey newActivationKey = activationKeyRepo.save(activationKey);
             Map<String, String> map = new HashMap<>();
             map.put("mail", user.getEmail());
@@ -47,7 +50,7 @@ public class UserService {
     }
 
     public String activateUser(String activationKey) {
-        ActivationKey key = activationKeyRepo.findByActiveKey(activationKey);
+        ActivationKey key = activationKeyRepo.findByActiveKey(activationKey).orElse(null);
         if (key != null && !key.isExpired()) {
             User user = key.getUser();
             user.setActive(true);
@@ -94,4 +97,19 @@ public class UserService {
         return true;
     }
 
+    //tạo activation key ngẫu nhiên
+    private String generateActivationKey() {
+        SecureRandom random = new SecureRandom();
+        StringBuilder sb = new StringBuilder(KEY_LENGTH);
+        boolean isKeyUnique = false;
+        do {
+            sb.setLength(0);
+            for (int i = 0; i < KEY_LENGTH; i++) {
+                int randomIndex = random.nextInt(CHARACTERS.length());
+                sb.append(CHARACTERS.charAt(randomIndex));
+            }
+            isKeyUnique = !activationKeyRepo.findByActiveKey(sb.toString()).isPresent();
+        } while (!isKeyUnique);
+        return sb.toString();
+    }
 }

@@ -3,6 +3,9 @@ package org.example.repository;
 import org.example.models.ActivationKey;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Optional;
+
 public interface ActivationKeyRepository extends JpaRepository<ActivationKey, Long> {
-    ActivationKey findByActiveKey(String key);
+
+    Optional<ActivationKey> findByActiveKey(String key);
 }
