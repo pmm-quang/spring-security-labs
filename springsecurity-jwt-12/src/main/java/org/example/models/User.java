@@ -11,7 +11,6 @@ import javax.persistence.*;
 @Table(name = "user")
 @Getter
 @Setter
-@NoArgsConstructor
 public class User {
 
     @Id
@@ -40,5 +39,8 @@ public class User {
         this.name = name;
         this.roles = "ROLE_USER";
         this.active = false;
+    }
+
+    public User() {
     }
 }

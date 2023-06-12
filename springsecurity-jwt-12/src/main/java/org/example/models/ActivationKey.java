@@ -13,7 +13,6 @@ import java.time.temporal.ChronoUnit;
 @Table (name = "activation_key")
 @Getter
 @Setter
-@NoArgsConstructor
 public class ActivationKey {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -34,6 +33,7 @@ public class ActivationKey {
         this.activeKey = key;
         this.expirationTime = LocalDateTime.now().plus(10, ChronoUnit.MINUTES);
     }
+    public ActivationKey() {}
 
     public boolean isExpired() {
         return expirationTime.isBefore(LocalDateTime.now());
