@@ -5,7 +5,7 @@
 
 ![image](https://github.com/pmm-quang/spring-security-labs/assets/63343138/5b721c57-8236-4b1d-b2c6-e9bf34c7dbfe)
 
-### Sơ đồ cho đăng ký tài khoản:
+### Biểu đồ tuần tự cho đăng ký tài khoản:
 
 ![image](https://github.com/pmm-quang/spring-security-labs/assets/63343138/587d7f81-496a-4d9b-9873-01232845b27c)
 
