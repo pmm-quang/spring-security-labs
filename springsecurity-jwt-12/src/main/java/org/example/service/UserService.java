@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import javax.transaction.Transactional;
 import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
@@ -31,6 +32,7 @@ public class UserService {
         this.activationKeyRepo = activationKeyRepo;
     }
 
+    @Transactional
     public Map<String, String> createUser(RegisterRequest request) {
         if (!usernameExists(request.getUsername())
                 && !emailExists(request.getEmail())
@@ -49,6 +51,7 @@ public class UserService {
         return null;
     }
 
+    @Transactional
     public String activateUser(String activationKey) {
         ActivationKey key = activationKeyRepo.findByActiveKey(activationKey).orElse(null);
         if (key != null && !key.isExpired()) {
@@ -57,9 +60,13 @@ public class UserService {
             userRepo.save(user);
             log.info("Account has been activated: " + user.getUsername());
             return "Your account has been activated.";
+        } else if (key != null && key.isExpired()) {
+            activationKeyRepo.delete(key);
+            userRepo.delete(key.getUser());
+            log.error("The account's activation code has expired: " + key.getUser().getUsername());
+            return "The activation code has expired!";
         }
-        assert key != null;
-        log.error("The account's activation code has expired: " + key.getUser().getUsername());
+        log.error("Activation code does not exist");
         return "The activation code has expired!";
     }
 
