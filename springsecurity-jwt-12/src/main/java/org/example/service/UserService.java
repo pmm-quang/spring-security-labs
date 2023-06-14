@@ -34,9 +34,7 @@ public class UserService {
 
     @Transactional
     public Map<String, String> createUser(RegisterRequest request) {
-        if (!usernameExists(request.getUsername())
-                && !emailExists(request.getEmail())
-                && isValidEmail(request.getEmail())) {
+        if (validate(request)) {
             User user = new User(request.getUsername(), request.getPassword(), request.getEmail(), request.getName());
             User newUser = userRepo.save(user);
             ActivationKey activationKey = new ActivationKey(newUser, generateActivationKey());
@@ -71,7 +69,11 @@ public class UserService {
     }
 
     // Kiểm tra xem username đã tồn tại hay chưa
-    public boolean usernameExists(String username) {
+    private boolean usernameExists(String username) {
+        if (username == null) {
+            log.error("username is not null!");
+            throw new InvalidException("username is not null!");
+        }
         userRepo.findByUsername(username).ifPresent(
             user -> {
                 log.error("Username exists: " + username);
@@ -82,7 +84,11 @@ public class UserService {
     }
 
     // Kiểm tra xem email đã tồn tại hay chưa
-    public boolean emailExists(String email) {
+    private boolean emailExists(String email) {
+        if (email == null) {
+            log.error("email is not null!");
+            throw new InvalidException("email is not null!");
+        }
         userRepo.findByEmail(email).ifPresent(
             user -> {
                 log.error("Email exists: " + email);
@@ -93,7 +99,7 @@ public class UserService {
     }
 
     //Kiểm tra định dạng email
-    public boolean isValidEmail(String email) {
+    private boolean isValidEmail(String email) {
         String regex = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
         Pattern pattern = Pattern.compile(regex);
         Matcher matcher = pattern.matcher(email);
@@ -102,6 +108,22 @@ public class UserService {
             throw new InvalidException("Email invalidate!");
         }
         return true;
+    }
+
+    private boolean validate(RegisterRequest request) {
+        if (request.getName() == null ) {
+            log.error("Name is not null!");
+            throw new InvalidException("Name is not null");
+        }
+        if (request.getPassword() == null) {
+            log.error("password is not null!");
+            throw new InvalidException("Password is not null");
+        }
+        return !usernameExists(request.getUsername())
+                && !emailExists(request.getEmail())
+                && isValidEmail(request.getEmail())
+                && request.getName() != null
+                && request.getPassword() != null;
     }
 
     //tạo activation key ngẫu nhiên
