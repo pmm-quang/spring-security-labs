@@ -447,6 +447,15 @@ public class RegisterRequest {
         </dependency>
 ```
 ### Hình minh họa:
+- Tạo 1 tài khoản mới:
+![image](https://github.com/pmm-quang/spring-security-labs/assets/63343138/c3d5a231-8b2d-4101-91a3-f20c7aa93359)
+
+- Email thông báo yêu cầu kích hoạt:
+![image](https://github.com/pmm-quang/spring-security-labs/assets/63343138/ae29bdef-1d2f-4439-b25e-80b9a1ddf64d)
+
+- Kích hoạt thành công:
+
+  ![image](https://github.com/pmm-quang/spring-security-labs/assets/63343138/ebddb70c-3e38-4b0a-9a0e-2a8c8cbaba33)
 
 ##### - Đăng nhập:
 
