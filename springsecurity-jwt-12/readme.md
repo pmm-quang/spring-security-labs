@@ -10,7 +10,15 @@
 ![image](https://github.com/pmm-quang/spring-security-labs/assets/63343138/1457b34f-b005-407a-90de-70d90f7ffb85)
 
 ### Cài đặt
-
+- Cài đặt trong file application.yml để kết nối với mySQL database:
+```
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/springsecurity
+    username: root
+    password:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+```
 
 - Tạo entity **User** tham chiếu với database:
 ```java
@@ -174,7 +182,33 @@ public class UserService {
 - Sử dụng MessageSource để tải các chuỗi từ các file messages.properties, messages_en.properties, messages_vi.properties.
 - Phương thức getMessage() trả về chuỗi văn bản tương ứng với mã đã cho, được tải từ nguồn dữ liệu chuỗi (message bundle) phù hợp với Locale đã chỉ định.
 
+
 - Tạo **MailService** để xử lý logic liên quan đến gửi mail
+- Để làm việc với email, cần thêm vào file pom.xml:
+```
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+```
+- Cấu hình trong file application.yml:
+```
+spring:
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: 
+    password: 
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls.enable: true
+```
+- username và password là địa chỉ và mật khẩu của email để hệ thống dùng để gửi mail
+- ở đây tôi cấu hình mặc định gửi bẳng gmail
+
+**MailService**
 ```java
 @Service
 public class MailService {
@@ -412,6 +446,7 @@ public class RegisterRequest {
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 ```
+### Hình minh họa:
 
 ##### - Đăng nhập:
 
