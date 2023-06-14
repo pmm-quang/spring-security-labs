@@ -51,7 +51,6 @@ public class MailService {
             helper.setText(htmlContent, true);
             mailSender.send(message);
             log.info("Email sending success: " + mail);
-//            return "Please check your mailbox to active your account.";
             return messageSource.getMessage("checkmail", null, LocaleContextHolder.getLocale());
         } catch (MessagingException e) {
             log.error("Email sending fail!");

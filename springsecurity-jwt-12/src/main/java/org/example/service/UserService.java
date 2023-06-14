@@ -40,7 +40,8 @@ public class UserService {
 
     @Transactional
     public Map<String, String> createUser(RegisterRequest request) {
-        if (validate(request)) {
+        if (!usernameExists(request.getUsername())
+                && !emailExists(request.getEmail())) {
             User user = new User(request.getUsername(), request.getPassword(), request.getEmail(), request.getName());
             User newUser = userRepo.save(user);
             ActivationKey activationKey = new ActivationKey(newUser, generateActivationKey());
@@ -64,14 +65,12 @@ public class UserService {
             user.setActive(true);
             userRepo.save(user);
             log.info("Account has been activated: " + user.getUsername());
-//            return "Your account has been activated.";
             messageCode = "account.active.success";
         } else if (key != null && key.isExpired()) {
             activationKeyRepo.delete(key);
             userRepo.delete(key.getUser());
             log.error("The account's activation code has expired: " + key.getUser().getUsername());
             messageCode = "account.active.error";
-//            return "The activation code has expired!";
         } else {
             log.error("Activation code does not exist");
             messageCode = "account.active.error";
@@ -81,12 +80,6 @@ public class UserService {
 
     // Kiểm tra xem username đã tồn tại hay chưa
     private boolean usernameExists(String username) {
-
-        if (username == null) {
-            log.error("username is not null!");
-            throw new InvalidException(messageSource.getMessage("create.user.invalid.username.null", null,
-                    LocaleContextHolder.getLocale()));
-        }
         userRepo.findByUsername(username).ifPresent(
             user -> {
                 log.error("Username exists: " + username);
@@ -99,11 +92,6 @@ public class UserService {
 
     // Kiểm tra xem email đã tồn tại hay chưa
     private boolean emailExists(String email) {
-        if (email == null) {
-            log.error("email is not null!");
-            throw new InvalidException(messageSource.getMessage("create.user.invalid.mail.null", null,
-                    LocaleContextHolder.getLocale()));
-        }
         userRepo.findByEmail(email).ifPresent(
             user -> {
                 log.error("Email exists: " + email);
@@ -112,37 +100,6 @@ public class UserService {
             }
         );
         return false;
-    }
-
-    //Kiểm tra định dạng email
-    private boolean isValidEmail(String email) {
-        String regex = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
-        Pattern pattern = Pattern.compile(regex);
-        Matcher matcher = pattern.matcher(email);
-        if (!matcher.matches()) {
-            log.error("Email invalidate: " + email);
-            throw new InvalidException(messageSource.getMessage("create.user.invalid.mail.invalid", null,
-                    LocaleContextHolder.getLocale()));
-        }
-        return true;
-    }
-
-    private boolean validate(RegisterRequest request) {
-        if (request.getName() == null ) {
-            log.error("Name is not null!");
-            throw new InvalidException(messageSource.getMessage("create.user.invalid.name.null", null,
-                    LocaleContextHolder.getLocale()));
-        }
-        if (request.getPassword() == null) {
-            log.error("password is not null!");
-            throw new InvalidException(messageSource.getMessage("create.user.invalid.password.null", null,
-                    LocaleContextHolder.getLocale()));
-        }
-        return !usernameExists(request.getUsername())
-                && !emailExists(request.getEmail())
-                && isValidEmail(request.getEmail())
-                && request.getName() != null
-                && request.getPassword() != null;
     }
 
     //tạo activation key ngẫu nhiên

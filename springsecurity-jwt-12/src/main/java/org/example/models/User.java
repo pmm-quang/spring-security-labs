@@ -40,7 +40,6 @@ public class User {
         this.roles = "ROLE_USER";
         this.active = false;
     }
-
     public User() {
     }
 }

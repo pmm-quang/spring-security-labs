@@ -33,8 +33,6 @@ public class ActivationKey {
         this.activeKey = key;
         this.expirationTime = LocalDateTime.now().plus(10, ChronoUnit.MINUTES);
     }
-    public ActivationKey() {}
-
     public boolean isExpired() {
         return expirationTime.isBefore(LocalDateTime.now());
     }
