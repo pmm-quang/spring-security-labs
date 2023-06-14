@@ -7,9 +7,10 @@
 
 ### Biểu đồ tuần tự cho đăng ký tài khoản:
 
-![image](https://github.com/pmm-quang/spring-security-labs/assets/63343138/587d7f81-496a-4d9b-9873-01232845b27c)
+![image](https://github.com/pmm-quang/spring-security-labs/assets/63343138/1457b34f-b005-407a-90de-70d90f7ffb85)
 
 ### Cài đặt
+
 
 - Tạo entity **User** tham chiếu với database:
 ```java
