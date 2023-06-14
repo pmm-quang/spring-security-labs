@@ -79,18 +79,21 @@ public class UserService {
     private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     private static final int KEY_LENGTH = 10;
     private final Logger log = LoggerFactory.getLogger(UserService.class);
+
+    private final MessageSource messageSource;
     private final UserRepository userRepo;
     private final ActivationKeyRepository activationKeyRepo;
 
-    public UserService(UserRepository userRepo, ActivationKeyRepository activationKeyRepo) {
+    public UserService(UserRepository userRepo, ActivationKeyRepository activationKeyRepo, MessageSource messageSource) {
         this.userRepo = userRepo;
         this.activationKeyRepo = activationKeyRepo;
+        this.messageSource = messageSource;
     }
 
+    @Transactional
     public Map<String, String> createUser(RegisterRequest request) {
         if (!usernameExists(request.getUsername())
-                && !emailExists(request.getEmail())
-                && isValidEmail(request.getEmail())) {
+                && !emailExists(request.getEmail())) {
             User user = new User(request.getUsername(), request.getPassword(), request.getEmail(), request.getName());
             User newUser = userRepo.save(user);
             ActivationKey activationKey = new ActivationKey(newUser, generateActivationKey());
@@ -105,52 +108,50 @@ public class UserService {
         return null;
     }
 
+    @Transactional
     public String activateUser(String activationKey) {
         ActivationKey key = activationKeyRepo.findByActiveKey(activationKey).orElse(null);
+        String messageCode = null;
         if (key != null && !key.isExpired()) {
             User user = key.getUser();
             user.setActive(true);
             userRepo.save(user);
             log.info("Account has been activated: " + user.getUsername());
-            return "Your account has been activated.";
+            messageCode = "account.active.success";
+        } else if (key != null && key.isExpired()) {
+            activationKeyRepo.delete(key);
+            userRepo.delete(key.getUser());
+            log.error("The account's activation code has expired: " + key.getUser().getUsername());
+            messageCode = "account.active.error";
+        } else {
+            log.error("Activation code does not exist");
+            messageCode = "account.active.error";
         }
-        assert key != null;
-        log.error("The account's activation code has expired: " + key.getUser().getUsername());
-        return "The activation code has expired!";
+        return messageSource.getMessage(messageCode, null, LocaleContextHolder.getLocale());
     }
 
     // Kiểm tra xem username đã tồn tại hay chưa
-    public boolean usernameExists(String username) {
+    private boolean usernameExists(String username) {
         userRepo.findByUsername(username).ifPresent(
                 user -> {
                     log.error("Username exists: " + username);
-                    throw new InvalidException("Username exists!");
+                    throw new InvalidException(messageSource.getMessage("create.user.invalid.username.exists", null,
+                            LocaleContextHolder.getLocale()));
                 }
         );
         return false;
     }
 
     // Kiểm tra xem email đã tồn tại hay chưa
-    public boolean emailExists(String email) {
+    private boolean emailExists(String email) {
         userRepo.findByEmail(email).ifPresent(
                 user -> {
                     log.error("Email exists: " + email);
-                    throw new InvalidException("Email exists!");
+                    throw new InvalidException(messageSource.getMessage("create.user.invalid.mail.exists", null,
+                            LocaleContextHolder.getLocale()));
                 }
         );
         return false;
-    }
-
-    //Kiểm tra định dạng email
-    public boolean isValidEmail(String email) {
-        String regex = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
-        Pattern pattern = Pattern.compile(regex);
-        Matcher matcher = pattern.matcher(email);
-        if (!matcher.matches()) {
-            log.error("Email invalidate: " + email);
-            throw new InvalidException("Email invalidate!");
-        }
-        return true;
     }
 
     //tạo activation key ngẫu nhiên
@@ -170,17 +171,22 @@ public class UserService {
     }
 }
 ```
-- Tạo MailService để xử lý logic liên quan đến gửi mail
+- Sử dụng MessageSource để tải các chuỗi từ các file messages.properties, messages_en.properties, messages_vi.properties.
+- Phương thức getMessage() trả về chuỗi văn bản tương ứng với mã đã cho, được tải từ nguồn dữ liệu chuỗi (message bundle) phù hợp với Locale đã chỉ định.
+
+- Tạo **MailService** để xử lý logic liên quan đến gửi mail
 ```java
 @Service
 public class MailService {
+    private final MessageSource messageSource;
     private final Logger log = LoggerFactory.getLogger(MailService.class);
     private final JavaMailSender mailSender;
     private final HttpServletRequest request;
 
-    public MailService(JavaMailSender mailSender, HttpServletRequest request) {
+    public MailService(JavaMailSender mailSender, HttpServletRequest request, MessageSource messageSource) {
         this.mailSender = mailSender;
         this.request = request;
+        this.messageSource = messageSource;
     }
 
     public String sendMail(String mail, String key){
@@ -194,26 +200,48 @@ public class MailService {
                     "/active?activationKey=" + key;
             String htmlContent =
                     "<html>" +
-                        "<body>" +
-                            "<p>Vui lòng click vào đường link bên dưới để kích hoạt tài khoản</p>" +
-                            "<br>" +
-                            "<p>Lưu ý đường link chỉ có hiệu lực trong vòng 10 phút kể từ lúc đăng ký</p>" +
+                            "<body>" +
+                            "<p>"+messageSource.getMessage("mailcontent.first", null, LocaleContextHolder.getLocale()) +"</p>" +
+                            "<p>"+messageSource.getMessage("mailcontent.second", null, LocaleContextHolder.getLocale())+"</p>" +
                             "<p>" +
-                                "<a href=\"" + url + "\">" + "Click để active" + "</a>" +
+                            "<a href=\"" + url + "\">" + messageSource.getMessage("mailcontent.link", null, LocaleContextHolder.getLocale()) + "</a>" +
                             "</p>" +
-                        "</body>" +
-                    "</html>";
+                            "</body>" +
+                            "</html>";
             helper.setText(htmlContent, true);
             mailSender.send(message);
             log.info("Email sending success: " + mail);
-            return "Please check your mailbox to active your account.";
+            return messageSource.getMessage("checkmail", null, LocaleContextHolder.getLocale());
         } catch (MessagingException e) {
             log.error("Email sending fail!");
             throw new RuntimeException(e);
         }
+
     }
 }
 ```
+###  Triển khai đa ngôn ngữ trong Spring bằng cách sử dụng MessageSource
+- Cấu hình MessageSource: Trước tiên, bạn cần cấu hình MessageSource để tải các tài nguyên ngôn ngữ từ các file properties.
+```
+spring:
+  messages:
+    basename: i18n/messages
+    encoding: UTF-8
+```
+- Tạo các file properties ngôn ngữ: Trong thư mục resources, tạo thư mục i18n và bên trong tạo các file properties tương ứng cho mỗi ngôn ngữ. Trong project này tôi tạo messages.properties, messages_en.properties, messages_vi.properties
+
+ví dụ trong **messages_en.properties**
+```
+account.active.success=Your account has been activated.
+account.active.error=The activation code has expired!
+```
+trong **messages_vi.properties**
+```
+account.active.success=Tài khoản của bạn đã được kích hoạt.
+account.active.error=Mã kích hoạt đã hết hạn!
+```
+
+
 ### Security
 - Ngoài các class đã tạo như bài 8, chúng ta sẽ tạo thêm 2 class nữa để cấu hình jwt là JwtFilter và JwtTokenProvider.
 
@@ -335,6 +363,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
 ##### - Đăng ký tài khoản:
 
+**RegisterController:**
 - API đăng ký:
 ```java
 @PostMapping("/register")
@@ -358,16 +387,28 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 ```java
 @Data
 public class RegisterRequest {
+    @NotBlank(message = "{create.user.invalid.username.null}")
     private String username;
+
+    @NotBlank(message = "{create.user.invalid.password.null}")
     private String password;
+
+    @NotBlank(message = "{create.user.invalid.name.null}")
     private String name;
+
+    @NotBlank(message = "{create.user.invalid.mail.null}")
+    @Email(message = "{create.user.invalid.mail.invalid}")
     private String email;
 }
 ```
-![img.png](img.png)
-![img_1.png](img_1.png)
+- sử dụng các annotation được cung cấp bởi Hibernate Validator, một thư viện sử dụng để xác thực dữ liệu trong ứng dụng Java
+- **@NotBlank**: Kiểm tra xem một chuỗi có khác null, không trống và không chỉ chứa các khoảng trắng hay không.
+- **@Email**: Kiểm tra xem một chuỗi có đúng định dạng email hay không.
+- Nếu các trường đầu vào không đúng quy định sẽ ném ra lỗi mới message được cài đặt trong các file message.properties
 
 ##### - Đăng nhập:
+
+**AuthController**
 - API dùng để đăng nhập:
 ```java
  @PostMapping("/auth")
