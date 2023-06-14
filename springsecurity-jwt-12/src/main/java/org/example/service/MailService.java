@@ -18,15 +18,15 @@ import java.net.MalformedURLException;
 @Service
 public class MailService {
 
-    @Autowired
-    private MessageSource messageSource;
+    private final MessageSource messageSource;
     private final Logger log = LoggerFactory.getLogger(MailService.class);
     private final JavaMailSender mailSender;
     private final HttpServletRequest request;
 
-    public MailService(JavaMailSender mailSender, HttpServletRequest request) {
+    public MailService(JavaMailSender mailSender, HttpServletRequest request, MessageSource messageSource) {
         this.mailSender = mailSender;
         this.request = request;
+        this.messageSource = messageSource;
     }
 
     public String sendMail(String mail, String key){
@@ -41,8 +41,7 @@ public class MailService {
             String htmlContent =
                     "<html>" +
                         "<body>" +
-                            "<p>"+ messageSource.getMessage("mailcontent.first", null, LocaleContextHolder.getLocale()) +"</p>" +
-                            "<br>" +
+                            "<p>"+messageSource.getMessage("mailcontent.first", null, LocaleContextHolder.getLocale()) +"</p>" +
                             "<p>"+messageSource.getMessage("mailcontent.second", null, LocaleContextHolder.getLocale())+"</p>" +
                             "<p>" +
                                 "<a href=\"" + url + "\">" + messageSource.getMessage("mailcontent.link", null, LocaleContextHolder.getLocale()) + "</a>" +

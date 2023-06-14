@@ -9,6 +9,9 @@ import org.example.repository.ActivationKeyRepository;
 import org.example.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
 
 import javax.transaction.Transactional;
@@ -24,12 +27,15 @@ public class UserService {
     private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     private static final int KEY_LENGTH = 10;
     private final Logger log = LoggerFactory.getLogger(UserService.class);
+
+    private final MessageSource messageSource;
     private final UserRepository userRepo;
     private final ActivationKeyRepository activationKeyRepo;
 
-    public UserService(UserRepository userRepo, ActivationKeyRepository activationKeyRepo) {
+    public UserService(UserRepository userRepo, ActivationKeyRepository activationKeyRepo, MessageSource messageSource) {
         this.userRepo = userRepo;
         this.activationKeyRepo = activationKeyRepo;
+        this.messageSource = messageSource;
     }
 
     @Transactional
@@ -52,32 +58,40 @@ public class UserService {
     @Transactional
     public String activateUser(String activationKey) {
         ActivationKey key = activationKeyRepo.findByActiveKey(activationKey).orElse(null);
+        String messageCode = null;
         if (key != null && !key.isExpired()) {
             User user = key.getUser();
             user.setActive(true);
             userRepo.save(user);
             log.info("Account has been activated: " + user.getUsername());
-            return "Your account has been activated.";
+//            return "Your account has been activated.";
+            messageCode = "account.active.success";
         } else if (key != null && key.isExpired()) {
             activationKeyRepo.delete(key);
             userRepo.delete(key.getUser());
             log.error("The account's activation code has expired: " + key.getUser().getUsername());
-            return "The activation code has expired!";
+            messageCode = "account.active.error";
+//            return "The activation code has expired!";
+        } else {
+            log.error("Activation code does not exist");
+            messageCode = "account.active.error";
         }
-        log.error("Activation code does not exist");
-        return "The activation code has expired!";
+        return messageSource.getMessage(messageCode, null, LocaleContextHolder.getLocale());
     }
 
     // Kiểm tra xem username đã tồn tại hay chưa
     private boolean usernameExists(String username) {
+
         if (username == null) {
             log.error("username is not null!");
-            throw new InvalidException("username is not null!");
+            throw new InvalidException(messageSource.getMessage("create.user.invalid.username.null", null,
+                    LocaleContextHolder.getLocale()));
         }
         userRepo.findByUsername(username).ifPresent(
             user -> {
                 log.error("Username exists: " + username);
-                throw new InvalidException("Username exists!");
+                throw new InvalidException(messageSource.getMessage("create.user.invalid.username.exists", null,
+                        LocaleContextHolder.getLocale()));
             }
         );
         return false;
@@ -87,12 +101,14 @@ public class UserService {
     private boolean emailExists(String email) {
         if (email == null) {
             log.error("email is not null!");
-            throw new InvalidException("email is not null!");
+            throw new InvalidException(messageSource.getMessage("create.user.invalid.mail.null", null,
+                    LocaleContextHolder.getLocale()));
         }
         userRepo.findByEmail(email).ifPresent(
             user -> {
                 log.error("Email exists: " + email);
-                throw new InvalidException("Email exists!");
+                throw new InvalidException(messageSource.getMessage("create.user.invalid.mail.exists", null,
+                        LocaleContextHolder.getLocale()));
             }
         );
         return false;
@@ -105,7 +121,8 @@ public class UserService {
         Matcher matcher = pattern.matcher(email);
         if (!matcher.matches()) {
             log.error("Email invalidate: " + email);
-            throw new InvalidException("Email invalidate!");
+            throw new InvalidException(messageSource.getMessage("create.user.invalid.mail.invalid", null,
+                    LocaleContextHolder.getLocale()));
         }
         return true;
     }
@@ -113,11 +130,13 @@ public class UserService {
     private boolean validate(RegisterRequest request) {
         if (request.getName() == null ) {
             log.error("Name is not null!");
-            throw new InvalidException("Name is not null");
+            throw new InvalidException(messageSource.getMessage("create.user.invalid.name.null", null,
+                    LocaleContextHolder.getLocale()));
         }
         if (request.getPassword() == null) {
             log.error("password is not null!");
-            throw new InvalidException("Password is not null");
+            throw new InvalidException(messageSource.getMessage("create.user.invalid.password.null", null,
+                    LocaleContextHolder.getLocale()));
         }
         return !usernameExists(request.getUsername())
                 && !emailExists(request.getEmail())
