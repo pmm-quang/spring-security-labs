@@ -405,6 +405,13 @@ public class RegisterRequest {
 - **@NotBlank**: Kiểm tra xem một chuỗi có khác null, không trống và không chỉ chứa các khoảng trắng hay không.
 - **@Email**: Kiểm tra xem một chuỗi có đúng định dạng email hay không.
 - Nếu các trường đầu vào không đúng quy định sẽ ném ra lỗi mới message được cài đặt trong các file message.properties
+- Để sử dụng Hibernate Validator cần thêm vào file pom.xml:
+```
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+```
 
 ##### - Đăng nhập:
 
